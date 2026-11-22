@@ -6,7 +6,7 @@ try{tg?.ready();tg?.expand();tg?.setHeaderColor?.('#101820');tg?.setBackgroundCo
 let W=0,H=0,dpr=1,last=0,raf=0,state='menu',elapsed=0,kills=0,hp=100,maxHp=100,level=1,xp=0,xpNeed=8;
 let damage=1,fireRate=1,moveSpeed=220,bulletSpeed=540,projectileCount=1,magnet=1;
 let player={x:0,y:0,r:13},touch=null,keys={},enemies=[],bullets=[],particles=[],pickups=[];
-let spawn=0,shot=0,shake=0,hitCooldown=0,flash=0;
+let spawn=0,shot=0,shake=0,hitCooldown=0,flash=0,bossTimer=60;
 const upgrades=[
  {name:'Усиленный урон',desc:'Урон снарядов +30%',apply:()=>damage*=1.3},
  {name:'Быстрая стрельба',desc:'Скорость стрельбы +22%',apply:()=>fireRate*=1.22},
@@ -30,6 +30,11 @@ function spawnEnemy(){
  const cfg=type==='tank'?{r:22,hp:Math.ceil(6+elapsed/24),speed:35+elapsed*.22,color:'#b879d9'}:type==='runner'?{r:10,hp:Math.ceil(1+elapsed/55),speed:105+elapsed*.35,color:'#f4bd62'}:{r:15,hp:Math.ceil(2+elapsed/38),speed:58+elapsed*.28,color:'#e66b61'};
  enemies.push({x,y,r:cfg.r,hp:cfg.hp,maxHp:cfg.hp,speed:cfg.speed,color:cfg.color,type,phase:rand(0,7)});
 }
+function spawnBoss(){
+ const hpMax=48+Math.floor(elapsed*1.2);
+ enemies.push({x:W/2,y:82,r:31,hp:hpMax,maxHp:hpMax,speed:42+elapsed*.12,color:'#ff526e',type:'boss',phase:0});
+ const wrap=$('boss-wrap');wrap.classList.remove('hidden');
+}
 function burst(x,y,color,n){for(let i=0;i<(n||8);i++){let a=rand(0,Math.PI*2),s=rand(35,180);particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:rand(.2,.55),max:.55,color,r:rand(2,4)})}}
 function nearest(){let best=null,bd=Infinity;for(const e of enemies){let d=Math.hypot(e.x-player.x,e.y-player.y);if(d<bd){bd=d;best=e}}return best}
 function shoot(){
@@ -51,15 +56,17 @@ function update(dt){
  if(state!=='playing')return;
  elapsed+=dt;spawn-=dt;shot-=dt;hitCooldown=Math.max(0,hitCooldown-dt);flash=Math.max(0,flash-dt);shake=Math.max(0,shake-dt*22);
  if(spawn<=0){spawn=Math.max(.28,1.12-elapsed*.006);spawnEnemy()}
+ if(elapsed>=bossTimer&&!enemies.some(e=>e.type==='boss')){spawnBoss();bossTimer+=60}
  if(shot<=0){shoot();shot=1/fireRate}
  let mx=0,my=0;
  if(touch){let dx=touch.x-touch.startX,dy=touch.y-touch.startY,len=Math.hypot(dx,dy),max=48;if(len>max){dx=dx/len*max;dy=dy/len*max}mx=dx/max;my=dy/max}
  else{mx=(keys.ArrowRight||keys.d?1:0)-(keys.ArrowLeft||keys.a?1:0);my=(keys.ArrowDown||keys.s?1:0)-(keys.ArrowUp||keys.w?1:0);let l=Math.hypot(mx,my);if(l>1){mx/=l;my/=l}}
  player.x=clamp(player.x+mx*moveSpeed*dt,player.r,W-player.r);player.y=clamp(player.y+my*moveSpeed*dt,68,H-player.r);
- for(let i=enemies.length-1;i>=0;i--){const e=enemies[i],a=Math.atan2(player.y-e.y,player.x-e.x);e.x+=Math.cos(a)*e.speed*dt;e.y+=Math.sin(a)*e.speed*dt;e.phase+=dt*5;if(Math.hypot(e.x-player.x,e.y-player.y)<e.r+player.r)damagePlayer(e.type==='tank'?28:20)}
- for(let i=bullets.length-1;i>=0;i--){const b=bullets[i];b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;let hit=false;for(let j=enemies.length-1;j>=0;j--){const e=enemies[j];if(Math.hypot(e.x-b.x,e.y-b.y)<e.r+b.r){e.hp-=b.damage;burst(b.x,b.y,'#a4ffe0',3);hit=true;if(e.hp<=0){burst(e.x,e.y,e.color,12);enemies.splice(j,1);kills++;if(Math.random()<.88)pickups.push({x:e.x,y:e.y,r:7,value:1})}break}}if(hit||b.life<=0||b.x< -30||b.x>W+30||b.y< -30||b.y>H+30)bullets.splice(i,1)}
+ for(let i=enemies.length-1;i>=0;i--){const e=enemies[i],a=Math.atan2(player.y-e.y,player.x-e.x);e.x+=Math.cos(a)*e.speed*dt;e.y+=Math.sin(a)*e.speed*dt;e.phase+=dt*5;if(Math.hypot(e.x-player.x,e.y-player.y)<e.r+player.r)damagePlayer(e.type==='boss'?35:e.type==='tank'?28:20)}
+ for(let i=bullets.length-1;i>=0;i--){const b=bullets[i];b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;let hit=false;for(let j=enemies.length-1;j>=0;j--){const e=enemies[j];if(Math.hypot(e.x-b.x,e.y-b.y)<e.r+b.r){e.hp-=b.damage;burst(b.x,b.y,'#a4ffe0',3);hit=true;if(e.hp<=0){burst(e.x,e.y,e.color,e.type==='boss'?42:12);enemies.splice(j,1);kills++;if(e.type==='boss'){for(let k=0;k<10;k++){const a=k*Math.PI*2/10;pickups.push({x:e.x+Math.cos(a)*34,y:e.y+Math.sin(a)*34,r:8,value:2})}$('boss-wrap').classList.add('hidden')}else if(Math.random()<.88)pickups.push({x:e.x,y:e.y,r:7,value:1})}break}}if(hit||b.life<=0||b.x< -30||b.x>W+30||b.y< -30||b.y>H+30)bullets.splice(i,1)}
  for(let i=pickups.length-1;i>=0;i--){const p=pickups[i],dx=player.x-p.x,dy=player.y-p.y,d=Math.hypot(dx,dy);if(d<125*magnet&&d>1){const pull=(1-d/(125*magnet))*420;p.x+=dx/d*pull*dt;p.y+=dy/d*pull*dt}if(d<player.r+p.r+7){pickups.splice(i,1);gainXp(p.value)}}
  for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=.96;p.vy*=.96;p.life-=dt;if(p.life<=0)particles.splice(i,1)}
+ const boss=enemies.find(e=>e.type==='boss');if(boss){$('boss-wrap').classList.remove('hidden');$('boss-hp').style.width=(boss.hp/boss.maxHp*100)+'%'}else $('boss-wrap').classList.add('hidden');
  $('hp').textContent=Math.ceil(hp);$('level').textContent=level;$('kills').textContent=kills;$('time').textContent=fmt(elapsed);$('xp-bar').style.width=(xp/xpNeed*100)+'%';
 }
 function fmt(t){const s=Math.floor(t);return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')}
@@ -72,13 +79,14 @@ function draw(){
  for(const p of pickups){ctx.shadowBlur=14;ctx.shadowColor='#74f4c9';ctx.fillStyle='#9affd9';ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill()}
  for(const b of bullets){ctx.shadowBlur=15;ctx.shadowColor='#9affdf';ctx.fillStyle='#eaffd9';ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fill()}
  ctx.shadowBlur=0;
- for(const e of enemies){ctx.save();ctx.translate(e.x,e.y);ctx.rotate(e.phase*.12);ctx.shadowBlur=12;ctx.shadowColor=e.color;ctx.fillStyle=e.color;ctx.beginPath();for(let k=0;k<8;k++){const a=k*Math.PI/4,r=k%2?e.r*.72:e.r;ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r)}ctx.closePath();ctx.fill();ctx.shadowBlur=0;ctx.fillStyle='#44202a';ctx.beginPath();ctx.arc(-4,-3,2,0,Math.PI*2);ctx.arc(4,-3,2,0,Math.PI*2);ctx.fill();if(e.maxHp>3){ctx.fillStyle='#0008';ctx.fillRect(-e.r,-e.r-8,e.r*2,3);ctx.fillStyle='#ffe0a0';ctx.fillRect(-e.r,-e.r-8,e.r*2*(e.hp/e.maxHp),3)}ctx.restore()}
+ for(const e of enemies){ctx.save();ctx.translate(e.x,e.y);ctx.rotate(e.phase*.12);ctx.shadowBlur=12;ctx.shadowColor=e.color;ctx.fillStyle=e.color;ctx.beginPath();for(let k=0;k<8;k++){const a=k*Math.PI/4,r=k%2?e.r*.72:e.r;ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r)}ctx.closePath();ctx.fill();ctx.shadowBlur=0;ctx.fillStyle='#44202a';ctx.beginPath();ctx.arc(-4,-3,2,0,Math.PI*2);ctx.arc(4,-3,2,0,Math.PI*2);ctx.fill();if(e.maxHp>3){ctx.fillStyle='#0008';ctx.fillRect(-e.r,-e.r-8,e.r*2,3);ctx.fillStyle=e.type==='boss'?'#ff9aaa':'#ffe0a0';ctx.fillRect(-e.r,-e.r-8,e.r*2*(e.hp/e.maxHp),3)}
+ if(e.type==='boss'){ctx.strokeStyle='#ff9aaa';ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,0,e.r+7,0,Math.PI*2);ctx.stroke()}ctx.restore()}
  for(const p of particles){ctx.globalAlpha=Math.max(0,p.life/p.max);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill()}ctx.globalAlpha=1;
  if(touch){const dx=touch.x-touch.startX,dy=touch.y-touch.startY,len=Math.hypot(dx,dy),scale=len>48?48/len:1;ctx.globalAlpha=.55;ctx.strokeStyle='#a4ffe0';ctx.lineWidth=2;ctx.beginPath();ctx.arc(touch.startX,touch.startY,48,0,Math.PI*2);ctx.stroke();ctx.fillStyle='#a4ffe0';ctx.beginPath();ctx.arc(touch.startX+dx*scale,touch.startY+dy*scale,18,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1}
  ctx.shadowBlur=24;ctx.shadowColor=flash>0?'#ff766d':'#56e4ca';ctx.fillStyle=flash>0?'#fff0ed':hitCooldown>0?'#6dbba9':'#72e8d0';ctx.beginPath();ctx.arc(player.x,player.y,player.r,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;ctx.fillStyle='#eafff7';ctx.beginPath();ctx.arc(player.x-4,player.y-4,4,0,Math.PI*2);ctx.fill();ctx.restore();
 }
 function loop(now){const dt=Math.min(.04,(now-last)/1000||0);last=now;update(dt);draw();raf=requestAnimationFrame(loop)}
-function start(){cancelAnimationFrame(raf);elapsed=0;kills=0;hp=100;maxHp=100;level=1;xp=0;xpNeed=8;damage=1;fireRate=1;moveSpeed=220;bulletSpeed=540;projectileCount=1;magnet=1;enemies=[];bullets=[];particles=[];pickups=[];spawn=.5;shot=0;shake=0;hitCooldown=0;flash=0;player={x:W/2,y:H*.66,r:13};touch=null;$('start-screen').classList.add('hidden');$('gameover-screen').classList.add('hidden');$('upgrade-screen').classList.add('hidden');$('pause-screen').classList.add('hidden');state='playing';last=performance.now();raf=requestAnimationFrame(loop)}
+function start(){cancelAnimationFrame(raf);elapsed=0;kills=0;hp=100;maxHp=100;level=1;xp=0;xpNeed=8;damage=1;fireRate=1;moveSpeed=220;bulletSpeed=540;projectileCount=1;magnet=1;enemies=[];bullets=[];particles=[];pickups=[];spawn=.5;shot=0;bossTimer=60;shake=0;hitCooldown=0;flash=0;player={x:W/2,y:H*.66,r:13};touch=null;$('start-screen').classList.add('hidden');$('gameover-screen').classList.add('hidden');$('upgrade-screen').classList.add('hidden');$('pause-screen').classList.add('hidden');state='playing';last=performance.now();raf=requestAnimationFrame(loop)}
 function endGame(){if(state==='over')return;state='over';touch=null;$('final-stats').textContent='Время: '+fmt(elapsed)+' · Уровень: '+level+' · Убийства: '+kills;$('gameover-screen').classList.remove('hidden')}
 function pause(){if(state!=='playing')return;state='paused';touch=null;$('pause-screen').classList.remove('hidden')}
 function resume(){if(state!=='paused')return;$('pause-screen').classList.add('hidden');state='playing';last=performance.now()}
