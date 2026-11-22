@@ -61,7 +61,8 @@ function update(dt){
  let mx=0,my=0;
  if(touch){let dx=touch.x-touch.startX,dy=touch.y-touch.startY,len=Math.hypot(dx,dy),max=48;if(len>max){dx=dx/len*max;dy=dy/len*max}mx=dx/max;my=dy/max}
  else{mx=(keys.ArrowRight||keys.d?1:0)-(keys.ArrowLeft||keys.a?1:0);my=(keys.ArrowDown||keys.s?1:0)-(keys.ArrowUp||keys.w?1:0);let l=Math.hypot(mx,my);if(l>1){mx/=l;my/=l}}
- player.x+=mx*moveSpeed*dt;player.y+=my*moveSpeed*dt;\n camera.x+=(player.x-W*.5-camera.x)*Math.min(1,dt*7);camera.y+=(player.y-H*.58-camera.y)*Math.min(1,dt*7);
+ player.x+=mx*moveSpeed*dt;player.y+=my*moveSpeed*dt;
+ const follow=1-Math.exp(-dt*10);camera.x+=(player.x-W*.5-camera.x)*follow;camera.y+=(player.y-H*.58-camera.y)*follow;
  for(let i=enemies.length-1;i>=0;i--){
  const e=enemies[i],a=Math.atan2(player.y-e.y,player.x-e.x);
  e.x+=Math.cos(a)*e.speed*dt;e.y+=Math.sin(a)*e.speed*dt;e.phase+=dt*5;
@@ -109,7 +110,8 @@ function draw(){
  ctx.shadowBlur=24;ctx.shadowColor=flash>0?'#ff766d':'#56e4ca';ctx.fillStyle=flash>0?'#fff0ed':hitCooldown>0?'#6dbba9':'#72e8d0';ctx.beginPath();ctx.arc(player.x,player.y,player.r,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;ctx.fillStyle='#eafff7';ctx.beginPath();ctx.arc(player.x-4,player.y-4,4,0,Math.PI*2);ctx.fill();
  ctx.restore();
  if(touch){const dx=touch.x-touch.startX,dy=touch.y-touch.startY,len=Math.hypot(dx,dy),scale=len>48?48/len:1;ctx.save();ctx.globalAlpha=.55;ctx.strokeStyle='#a4ffe0';ctx.lineWidth=2;ctx.beginPath();ctx.arc(touch.startX,touch.startY,48,0,Math.PI*2);ctx.stroke();ctx.fillStyle='#a4ffe0';ctx.beginPath();ctx.arc(touch.startX+dx*scale,touch.startY+dy*scale,18,0,Math.PI*2);ctx.fill();ctx.restore()}
-}\nfunction loop(now){const dt=Math.min(.04,(now-last)/1000||0);last=now;update(dt);draw();raf=requestAnimationFrame(loop)}
+}
+function loop(now){const dt=Math.min(.04,(now-last)/1000||0);last=now;update(dt);draw();raf=requestAnimationFrame(loop)}
 function start(){cancelAnimationFrame(raf);elapsed=0;kills=0;hp=100;maxHp=100;level=1;xp=0;xpNeed=8;damage=1;fireRate=1;moveSpeed=220;bulletSpeed=540;projectileCount=1;magnet=1;enemies=[];bullets=[];bossShots=[];particles=[];pickups=[];spawn=.5;shot=0;bossTimer=60;shake=0;hitCooldown=0;flash=0;player={x:W/2,y:H*.58,r:13};camera={x:0,y:0};touch=null;$('start-screen').classList.add('hidden');$('gameover-screen').classList.add('hidden');$('upgrade-screen').classList.add('hidden');$('pause-screen').classList.add('hidden');state='playing';last=performance.now();raf=requestAnimationFrame(loop)}
 function endGame(){if(state==='over')return;state='over';touch=null;$('final-stats').textContent='Время: '+fmt(elapsed)+' · Уровень: '+level+' · Убийства: '+kills;$('gameover-screen').classList.remove('hidden')}
 function pause(){if(state!=='playing')return;state='paused';touch=null;$('pause-screen').classList.remove('hidden')}
