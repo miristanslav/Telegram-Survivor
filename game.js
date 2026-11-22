@@ -24,8 +24,8 @@ function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
 function spawnEnemy(){
  if(enemies.length>85)return;
  const edge=Math.floor(Math.random()*4);
- let x=edge===0?-25:edge===1?W+25:rand(0,W);
- let y=edge===2?-25:edge===3?H+25:rand(75,H);
+ let x=edge===0?camera.x-25:edge===1?camera.x+W+25:rand(camera.x,camera.x+W);
+ let y=edge===2?camera.y-25:edge===3?camera.y+H+25:rand(camera.y+75,camera.y+H);
  const roll=Math.random(),type=elapsed>18&&roll>.78?'tank':elapsed>8&&roll>.48?'runner':'normal';
  const cfg=type==='tank'?{r:22,hp:Math.ceil(6+elapsed/24),speed:35+elapsed*.22,color:'#b879d9'}:type==='runner'?{r:10,hp:Math.ceil(1+elapsed/55),speed:105+elapsed*.35,color:'#f4bd62'}:{r:15,hp:Math.ceil(2+elapsed/38),speed:58+elapsed*.28,color:'#e66b61'};
  enemies.push({x,y,r:cfg.r,hp:cfg.hp,maxHp:cfg.hp,speed:cfg.speed,color:cfg.color,type,phase:rand(0,7)});
