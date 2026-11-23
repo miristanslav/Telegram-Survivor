@@ -26,9 +26,9 @@ function spawnEnemy(){
  const edge=Math.floor(Math.random()*4);
  let x=edge===0?camera.x-25:edge===1?camera.x+W+25:rand(camera.x,camera.x+W);
  let y=edge===2?camera.y-25:edge===3?camera.y+H+25:rand(camera.y+75,camera.y+H);
- const roll=Math.random(),type=elapsed>18&&roll>.78?'tank':elapsed>8&&roll>.48?'runner':'normal';
- const cfg=type==='tank'?{r:22,hp:Math.ceil(6+elapsed/24),speed:35+elapsed*.22,color:'#b879d9'}:type==='runner'?{r:10,hp:Math.ceil(1+elapsed/55),speed:105+elapsed*.35,color:'#f4bd62'}:{r:15,hp:Math.ceil(2+elapsed/38),speed:58+elapsed*.28,color:'#e66b61'};
- enemies.push({x,y,r:cfg.r,hp:cfg.hp,maxHp:cfg.hp,speed:cfg.speed,color:cfg.color,type,phase:rand(0,7)});
+ const roll=Math.random(),type=elapsed>25&&roll>.82?'shooter':elapsed>18&&roll>.68?'tank':elapsed>8&&roll>.43?'runner':'normal';
+ const cfg=type==='shooter'?{r:13,hp:Math.ceil(2+elapsed/45),speed:46+elapsed*.12,color:'#65b9e8'}:type==='tank'?{r:22,hp:Math.ceil(6+elapsed/24),speed:35+elapsed*.22,color:'#b879d9'}:type==='runner'?{r:10,hp:Math.ceil(1+elapsed/55),speed:105+elapsed*.35,color:'#f4bd62'}:{r:15,hp:Math.ceil(2+elapsed/38),speed:58+elapsed*.28,color:'#e66b61'};
+ enemies.push({x,y,r:cfg.r,hp:cfg.hp,maxHp:cfg.hp,speed:cfg.speed,color:cfg.color,type,phase:rand(0,7),attack:type==='shooter'?rand(.8,1.5):0});
 }
 function spawnBoss(){
  const hpMax=48+Math.floor(elapsed*1.2);
@@ -64,8 +64,14 @@ function update(dt){
  player.x+=mx*moveSpeed*dt;player.y+=my*moveSpeed*dt;
  const follow=1-Math.exp(-dt*10);camera.x+=(player.x-W*.5-camera.x)*follow;camera.y+=(player.y-H*.58-camera.y)*follow;
  for(let i=enemies.length-1;i>=0;i--){
- const e=enemies[i],a=Math.atan2(player.y-e.y,player.x-e.x);
- e.x+=Math.cos(a)*e.speed*dt;e.y+=Math.sin(a)*e.speed*dt;e.phase+=dt*5;
+ const e=enemies[i],a=Math.atan2(player.y-e.y,player.x-e.x),distance=Math.hypot(player.x-e.x,player.y-e.y);
+ if(e.type==='shooter'){
+  const moveAngle=distance>255?a:distance<175?a+Math.PI:a+Math.PI/2*Math.sin(e.phase);
+  e.x+=Math.cos(moveAngle)*e.speed*dt;e.y+=Math.sin(moveAngle)*e.speed*dt;
+  e.attack-=dt;
+  if(e.attack<=0){const speed=165+elapsed*.25;bossShots.push({x:e.x,y:e.y,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,r:6,life:3,damage:9});e.attack=rand(1.25,1.8);burst(e.x,e.y,'#65b9e8',4)}
+ }else{e.x+=Math.cos(a)*e.speed*dt;e.y+=Math.sin(a)*e.speed*dt}
+ e.phase+=dt*5;
  if(e.type==='boss'){
   e.attack-=dt;
   if(e.attack<=0){
@@ -79,7 +85,7 @@ function update(dt){
  }
  for(let i=bossShots.length-1;i>=0;i--){
   const b=bossShots[i];b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;
-  if(Math.hypot(b.x-player.x,b.y-player.y)<b.r+player.r){damagePlayer(14);burst(b.x,b.y,'#ff8296',9);bossShots.splice(i,1);continue}
+  if(Math.hypot(b.x-player.x,b.y-player.y)<b.r+player.r){damagePlayer(b.damage||14);burst(b.x,b.y,'#ff8296',9);bossShots.splice(i,1);continue}
   if(b.life<=0||b.x<camera.x-35||b.x>camera.x+W+35||b.y<camera.y-35||b.y>camera.y+H+35)bossShots.splice(i,1)
  }
  for(let i=bullets.length-1;i>=0;i--){const b=bullets[i];b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;let hit=false;for(let j=enemies.length-1;j>=0;j--){const e=enemies[j];if(Math.hypot(e.x-b.x,e.y-b.y)<e.r+b.r){e.hp-=b.damage;burst(b.x,b.y,'#a4ffe0',3);hit=true;if(e.hp<=0){burst(e.x,e.y,e.color,e.type==='boss'?42:12);enemies.splice(j,1);kills++;if(e.type==='boss'){for(let k=0;k<10;k++){const a=k*Math.PI*2/10;pickups.push({x:e.x+Math.cos(a)*34,y:e.y+Math.sin(a)*34,r:8,value:2})}$('boss-wrap').classList.add('hidden')}else if(Math.random()<.88)pickups.push({x:e.x,y:e.y,r:7,value:1})}break}}if(hit||b.life<=0||b.x<camera.x-40||b.x>camera.x+W+40||b.y<camera.y-40||b.y>camera.y+H+40)bullets.splice(i,1)}
