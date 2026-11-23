@@ -116,6 +116,7 @@ function start(){cancelAnimationFrame(raf);elapsed=0;kills=0;hp=100;maxHp=100;le
 function endGame(){if(state==='over')return;state='over';touch=null;$('final-stats').textContent='Время: '+fmt(elapsed)+' · Уровень: '+level+' · Убийства: '+kills;$('gameover-screen').classList.remove('hidden')}
 function pause(){if(state!=='playing')return;state='paused';touch=null;$('pause-screen').classList.remove('hidden')}
 function resume(){if(state!=='paused')return;$('pause-screen').classList.add('hidden');state='playing';last=performance.now()}
+function returnToMenu(){if(state!=='paused')return;cancelAnimationFrame(raf);touch=null;state='menu';$('pause-screen').classList.add('hidden');$('start-screen').classList.remove('hidden');}
 function pointerPos(e){const r=canvas.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top}}
 canvas.addEventListener('pointerdown',e=>{if(state==='playing'&&!touch){const p=pointerPos(e);touch={id:e.pointerId,startX:p.x,startY:p.y,x:p.x,y:p.y};try{canvas.setPointerCapture(e.pointerId)}catch(_){}}});
 canvas.addEventListener('pointermove',e=>{if(touch&&touch.id===e.pointerId){const p=pointerPos(e);touch.x=p.x;touch.y=p.y}});
@@ -123,7 +124,7 @@ function release(e){if(touch&&(!e||touch.id===e.pointerId))touch=null}
 canvas.addEventListener('pointerup',release);canvas.addEventListener('pointercancel',release);canvas.addEventListener('lostpointercapture',release);
 window.addEventListener('keydown',e=>{keys[e.key]=true;if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key))e.preventDefault();if(e.key==='Escape')state==='playing'?pause():resume()});
 window.addEventListener('keyup',e=>{keys[e.key]=false});
-$('start-btn').addEventListener('click',start);$('restart-btn').addEventListener('click',start);$('pause-btn').addEventListener('click',pause);$('resume-btn').addEventListener('click',resume);
+$('start-btn').addEventListener('click',start);$('restart-btn').addEventListener('click',start);$('pause-btn').addEventListener('click',pause);$('resume-btn').addEventListener('click',resume);$('menu-btn').addEventListener('click',returnToMenu);
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&state==='playing')pause()});
 draw();
 })();
